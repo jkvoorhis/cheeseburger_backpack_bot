@@ -34,7 +34,23 @@ To get the bot up and running, from the root of the repo run:
 python run_cheese.py 
 ```
 
+## New Plugins (adding functionality)
+Functionality is added through [Plugins][plugin-docs]. This project expects a certian
+naming scheme in order to auto load plugins to the running bot. If you would like
+your Plugin Class to be auto-loaded and used:
+
+* Create a module in `./plugins/` named 'plugin_<your_plugin_name>' (snake_case)
+* Name your Class within that file: 'Plugin<YourPluginName>' (CamelCase)
+
+Make sure your file and class names match! Files are in snake_case, and classes
+are in CamelCase.
+
+If you do not want your plugin to be automatically loaded, then do not follow this 
+scheme.
+
 ## When You're Done, Deactivate Virtual Env
 ```
 deactivate
 ```
+
+[plugin-docs]: https://github.com/slackhq/python-rtmbot

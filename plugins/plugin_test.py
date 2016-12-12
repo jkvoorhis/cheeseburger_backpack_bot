@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from rtmbot.core import Plugin
 
-class TestPlugin(Plugin):
+class PluginTest(Plugin):
 
     def catch_all(self, data):
         print(data)
