@@ -39,8 +39,8 @@ Functionality is added through [Plugins][plugin-docs]. This project expects a ce
 naming scheme in order to auto load plugins to the running bot. If you would like
 your Plugin Class to be auto-loaded and used:
 
-* Create a module in `./plugins/` named 'plugin_<your_plugin_name>' (snake_case)
-* Name your Class within that file: 'Plugin<YourPluginName>' (CamelCase)
+* Create a module in `./plugins/` named 'plugin_your_plugin_name' (snake_case)
+* Name your Class within that file: 'PluginYourPluginName' (CamelCase)
 
 Make sure your file and class names match! Files are in snake_case, and classes
 are in CamelCase.
