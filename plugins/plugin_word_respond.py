@@ -9,7 +9,10 @@ class PluginWordRespond(Plugin):
     def __init__(self, slack_client=None, plugin_config=None):
         # because of the way plugins are called we must explicitly pass the
         # arguments to the super
-        super(PluginWordRespond, self).__init__(slack_client, plugin_config)
+        super(PluginWordRespond, self).__init__(
+            slack_client=slack_client,
+            plugin_config=plugin_config
+        )
         self.words = self.load_word_list("words.txt")
 
     def process_message(self, data):
