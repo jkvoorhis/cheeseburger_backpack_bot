@@ -15,7 +15,6 @@ class PluginWordRespond(Plugin):
             plugin_config=plugin_config
         )
         self.words = self.load_json("words.json")
-        print(self.words)
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
