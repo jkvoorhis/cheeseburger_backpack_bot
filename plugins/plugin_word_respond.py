@@ -12,7 +12,7 @@ class PluginWordRespond(Plugin):
         # because of the way plugins are called we must explicitly pass the
         # arguments to the super
         super(PluginWordRespond, self).__init__(**kwargs)
-        self.words = self.load_word_list("words.txt")
+        self.words = self.load_json("words.json")
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
@@ -63,7 +63,7 @@ class PluginWordRespond(Plugin):
         for word, count in count_dict.iteritems():
             attachment_template["fields"].append({
                 "title": word.capitalize(),
-                "value": "Count: {count}\nAlternatives: {alt}".format(
+                "value": "Count: {count}\nAlternative(s): {alt}".format(
                     count=count,
                     alt=word_dict[word]
                 ),
