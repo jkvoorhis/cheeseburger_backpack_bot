@@ -13,17 +13,8 @@ class PluginRepeat(Plugin):
             slack_client=slack_client,
             plugin_config=plugin_config
         )
-        self.words = [
-            'banana',
-            'bananas',
-            'banana\'s',
-            'apple',
-            'apples',
-            'apple\'s',
-            'pineapple',
-            'pineapples',
-            'pineapple\'s'
-        ]
+        with open("words.txt") as f:
+            self.words = f.read().split()
 
     def process_message(self, data):
         print(data)
@@ -47,10 +38,10 @@ class PluginRepeat(Plugin):
         cnt = Counter()
         delims = '!"#$%&()*+,./:;<=>?@[\\]^_`{|}~\t\n\x0b\x0c\r '
         pattern = r"[{}]".format(delims)
-        message.lower()
-        message_array = re.split(pattern, message)
+        message_array = re.split(pattern, message.lower())
         for word in message_array:
-            if word in self.words:
-                cnt[word] += 1
-
+            word_v2 = word.replace(u"\u2019", "")
+            word_v3 = word_v2.replace("'", "")
+            if word_v3 in self.words:
+                cnt[word_v3] += 1
         return dict(cnt)
