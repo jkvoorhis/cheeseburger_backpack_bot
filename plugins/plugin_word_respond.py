@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-import re
-from collections import Counter
-
 from rtmbot.core import Plugin
+
+from utils import word_checking as wc_utils
 
 
 class PluginWordRespond(Plugin):
@@ -14,9 +13,14 @@ class PluginWordRespond(Plugin):
         self.words = self.load_word_list("words.txt")
 
     def process_message(self, data):
+        # TODO: for debugging only, remove for prod
         print(data)
+        # TODO: channel ids that start with 'C' are public channels, this is
+        # temporary until we allow users to opt-in to service
         if (data['channel'].startswith("C") and data['type'] == 'message'):
-            word_counter = self.check_for_flag_words(data['text'])
+            word_counter = wc_utils.check_for_flag_words(
+                data['text'], self.words
+            )
             if word_counter:
                 resp = self.slack_client.api_call('im.open', user=data['user'])
                 if resp['ok']:
@@ -25,17 +29,6 @@ class PluginWordRespond(Plugin):
                         'I counted you saying the following words this many '
                         'times: \n{}'.format(word_counter)
                     ])
-
-    def check_for_flag_words(self, message):
-        cnt = Counter()
-        delims = '!"#$%&()*+,./:;<=>?@[\\]^_`{|}~\t\n\x0b\x0c\r '
-        pattern = r"[{}]".format(delims)
-        message_array = re.split(pattern, message.lower())
-        for word in message_array:
-            formatted_word = word.replace(u"\u2019", "").replace("'", "")
-            if formatted_word in self.words:
-                cnt[formatted_word] += 1
-        return dict(cnt)
 
     def load_word_list(self, filepath):
         with open(filepath) as f:
