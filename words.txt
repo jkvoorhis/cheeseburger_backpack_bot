@@ -1,6 +1,0 @@
-apple
-apples
-banana
-bananas
-pineapple
-pineapples

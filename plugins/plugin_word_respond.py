@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 import json
 
 from rtmbot.core import Plugin
@@ -20,36 +21,35 @@ class PluginWordRespond(Plugin):
         # temporary until we allow users to opt-in to service
         if (data['channel'].startswith("C") and data['type'] == 'message'):
             word_counter = wc_utils.check_for_flag_words(
-                data['text'], self.words
+                data['text'], self.words.keys()
             )
             if word_counter:
                 resp = self.slack_client.api_call('im.open', user=data['user'])
                 if resp['ok']:
                     mssg_kwargs = self._build_slack_message(
                         resp['channel']['id'],
-                        word_counter
+                        word_counter,
+                        self.words
                     )
                     self.slack_client.api_call(
                         "chat.postMessage", **mssg_kwargs
                     )
 
-    def load_word_list(self, filepath):
-        with open(filepath) as f:
-            words = f.read().split()
-            return words
-
-    def _build_slack_message(self, channel_id, word_dict):
+    def _build_slack_message(self, channel_id, count_dict, word_dict):
         result = {
             "channel": channel_id,
             "as_user": "true",
             "attachments": []
         }
 
-        result["attachments"].append(self._build_slack_attachment(word_dict))
+        result["attachments"].append(self._build_slack_attachment(
+            count_dict,
+            word_dict
+        ))
 
         return result
 
-    def _build_slack_attachment(self, word_dict):
+    def _build_slack_attachment(self, count_dict, word_dict):
         attachment_template = {
             "fallback": "Breakdown of words used, and possible "
                         "alternatives",  # fallback text
@@ -60,10 +60,18 @@ class PluginWordRespond(Plugin):
             "mrkdwn_in": ["fields"]
         }
 
-        for word, count in word_dict.iteritems():
+        for word, count in count_dict.iteritems():
             attachment_template["fields"].append({
                 "title": word.capitalize(),
-                "value": "Count: {count}\nAlternatives: TBD".format(count=count),
+                "value": "Count: {count}\nAlternatives: {alt}".format(
+                    count=count,
+                    alt=word_dict[word]
+                ),
             })
 
         return attachment_template
+
+    def load_json(self, filepath):
+        with open(filepath) as word_file:
+            data = json.load(word_file)
+            return data
