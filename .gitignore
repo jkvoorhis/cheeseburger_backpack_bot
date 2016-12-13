@@ -4,3 +4,4 @@ bin/
 include/
 lib/
 rtmbot.log
+.env
