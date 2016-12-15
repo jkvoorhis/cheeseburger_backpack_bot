@@ -1,9 +1,14 @@
 from __future__ import unicode_literals
+from threading import Timer
 
 from rtmbot.core import Plugin
 
 from utils import word_checking as wc_utils
+from utils.db import update_user_counts
 from utils.utils import load_json, write_json, add_plurals
+
+OPT_IN_FILE = "data_files/opted_in.json"
+WORDS_FILE = "data_files/words.json"
 
 
 class PluginWordRespond(Plugin):
@@ -11,8 +16,10 @@ class PluginWordRespond(Plugin):
         # because of the way plugins are called we must explicitly pass the
         # arguments to the super
         super(PluginWordRespond, self).__init__(**kwargs)
-        self.words = add_plurals(load_json("words.json"))
-        self.opted_in = set(self._load_opted_in('opted_in.json'))
+        self.words = add_plurals(load_json(WORDS_FILE))
+        self.opted_in = set(self._load_opted_in(OPT_IN_FILE))
+        # TODO purely for testing/demo purposes, remove for prod
+        self.immediate = True
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
@@ -27,15 +34,20 @@ class PluginWordRespond(Plugin):
                 data['text'], self.words.keys()
             )
             if word_counter:
-                user_channel = self._get_user_dm_channel(data)
-                mssg_kwargs = self._build_slack_count_message(
-                    user_channel,
-                    word_counter,
-                    self.words
-                )
-                self.slack_client.api_call(
-                    "chat.postMessage", **mssg_kwargs
-                )
+                total_counts = update_user_counts(data["user"], word_counter)
+                print('total counts: {}'.format(total_counts))
+                # to repeat: this is purely for testing/demo purposes.
+                # in prod, all count messages will be sent at the end of the day
+                if self.immediate:
+                    self._send_count_message(data, total_counts)
+                else:
+                    delayed_message = Timer(
+                        10,
+                        self._send_count_message,
+                        args=[data, total_counts]
+                    )
+                    delayed_message.start()
+
 
     def _optin_flow(self, data):
         # a bit hacky but why not reuse
@@ -54,12 +66,12 @@ class PluginWordRespond(Plugin):
 
         if optin:
             self.opted_in.add(data["user"])
-            write_json({"opted_in": list(self.opted_in)}, 'opted_in.json')
+            write_json({"opted_in": list(self.opted_in)}, OPT_IN_FILE)
             self.slack_client.api_call("chat.postMessage", **message)
 
         elif optout:
             self.opted_in.discard(data["user"])
-            write_json({"opted_in": list(self.opted_in)}, 'opted_in.json')
+            write_json({"opted_in": list(self.opted_in)}, OPT_IN_FILE)
             self.slack_client.api_call("chat.postMessage", **message)
 
     def _build_slack_count_message(self, channel_id, count_dict, word_dict):
@@ -101,12 +113,26 @@ class PluginWordRespond(Plugin):
     def _load_opted_in(self, filepath):
         # TODO this will become more complicated when we use a db
         users = load_json(filepath)
-        return users["opted_in"]
+        if users:
+            return users["opted_in"]
+        else:
+            return []
 
     def _get_user_dm_channel(self, data):
         resp = self.slack_client.api_call('im.open', user=data['user'])
         if resp['ok']:
             return resp['channel']['id']
+
+    def _send_count_message(self, data, word_counter):
+        user_channel = self._get_user_dm_channel(data)
+        mssg_kwargs = self._build_slack_count_message(
+            user_channel,
+            word_counter,
+            self.words
+        )
+        self.slack_client.api_call(
+            "chat.postMessage", **mssg_kwargs
+        )
 
     def _commands(self, data):
         user_channel = self._get_user_dm_channel(data)

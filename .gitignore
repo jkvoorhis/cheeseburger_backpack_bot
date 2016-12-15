@@ -5,3 +5,6 @@ include/
 lib/
 rtmbot.log
 .env
+*.pyc
+data_files/counts.json
+data_files/opted_in.json

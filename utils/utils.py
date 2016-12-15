@@ -2,10 +2,16 @@ import json
 import inflect
 
 def load_json(filepath):
-    with open(filepath) as json_file:
-        data = json.load(json_file)
-        return data
-
+    try:
+        with open(filepath) as json_file:
+            try:
+                data = json.load(json_file)
+                return data
+            except ValueError: # file is empty
+                return None
+    except IOError:
+        with open(filepath, 'w') as json_file:
+            return None
 
 def write_json(blob, filepath):
     with open(filepath, 'w') as json_file:
