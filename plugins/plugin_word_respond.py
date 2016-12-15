@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from rtmbot.core import Plugin
 
 from utils import word_checking as wc_utils
-from utils.utils import load_json, write_json
+from utils.utils import load_json, write_json, add_plurals
 
 
 class PluginWordRespond(Plugin):
@@ -11,7 +11,7 @@ class PluginWordRespond(Plugin):
         # because of the way plugins are called we must explicitly pass the
         # arguments to the super
         super(PluginWordRespond, self).__init__(**kwargs)
-        self.words = load_json("words.json")
+        self.words = add_plurals(load_json("words.json"))
         self.opted_in = set(self._load_opted_in('opted_in.json'))
 
     def process_message(self, data):

@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import re
+
 from collections import Counter
 
 
@@ -10,7 +11,7 @@ def check_for_flag_words(message, words_array):
     pattern = r"[{}]".format(delims)
     message_array = re.split(pattern, message.lower())
     for word in message_array:
-        formatted_word = word.replace(u"\u2019", "").replace("'", "")
+        formatted_word = word.replace(u"\u2019s", "").replace(u"s\u2019", "s").replace("'s", "").replace("s'", "s")
         if formatted_word in words_array:
             cnt[formatted_word] += 1
     return dict(cnt)
