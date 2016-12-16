@@ -4,8 +4,12 @@ from threading import Timer
 from rtmbot.core import Plugin
 
 from utils import word_checking as wc_utils
-from utils.db import update_user_counts
+from utils.db import update_user_counts, get_user_counts
 from utils.utils import load_json, write_json, add_plurals
+
+import schedule
+import time
+import threading
 
 OPT_IN_FILE = "data_files/opted_in.json"
 WORDS_FILE = "data_files/words.json"
@@ -20,6 +24,28 @@ class PluginWordRespond(Plugin):
         self.opted_in = set(self._load_opted_in(OPT_IN_FILE))
         # TODO purely for testing/demo purposes, remove for prod
         self.immediate = True
+        # send a private message to each opt-in user at 5pm daily
+        schedule.every().day.at("17:00").do(self.run_threaded, self.job)
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
+    def run_threaded(self, job_func):
+        job_thread = threading.Thread(target=job_func)
+        job_thread.start()
+
+    def job(self):
+        total_counts = get_user_counts()
+        the_user = {}
+        for user in total_counts:
+            the_user["user"] = user
+            user_count = total_counts[user]
+            if not user_count:
+                break;
+            else:
+                self._send_count_message(the_user, user_count)
+                # clear the count for the user after sending the end of day message of counts
+                update_user_counts(user, dict())
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
