@@ -30,10 +30,10 @@ class PluginWordRespond(Plugin):
 
     def job(self):
         total_counts = get_user_counts()
-        the_user = {}
         for user in total_counts:
+            the_user = {}
             the_user["user"] = user
-            user_count = total_counts[user]
+            user_count = total_counts.get(user)
             if not user_count:
                 break;
             else:
