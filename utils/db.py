@@ -40,4 +40,4 @@ def get_user_counts():
     if all_users_counts:
         return all_users_counts
     else:
-        return []
+        return {}
