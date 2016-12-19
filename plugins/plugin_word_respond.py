@@ -18,7 +18,8 @@ class PluginWordRespond(Plugin):
         # because of the way plugins are called we must explicitly pass the
         # arguments to the super
         super(PluginWordRespond, self).__init__(**kwargs)
-        self.words = add_plurals(load_json(WORDS_FILE))
+        self.master_words = load_json(WORDS_FILE) #contains alternates
+        self.words = self._make_words_list(self.master_words)
         self.opted_in = set(self._load_opted_in(OPT_IN_FILE))
         # timer to send private message each day at 5pm to opted in users
         x=datetime.today()
@@ -57,17 +58,50 @@ class PluginWordRespond(Plugin):
         # only opted-in users should experience this workflow
         if data['user'] in self.opted_in:
             word_counter = wc_utils.check_for_flag_words(
-                data['text'], self.words.keys()
+                data['text'], self.words
             )
             if word_counter:
                 total_counts = update_user_counts(data["user"], word_counter)
                 print('total counts: {}'.format(total_counts))
 
+    def _make_words_list(self, master_list):
+        """
+        receive:
+        {
+          "fruit": {
+            "apple": {
+              "alternatives":["asparagus"],
+              "variations": ["applez"]
+            },
+            "banana": {
+              "alternatives":["broccoli"],
+              "variations": []
+            },
+            "pineapple": {
+              "alternatives":["pea"],
+              "variations": []
+            }
+          }
+        }
+
+        return:
+        {
+        "apple": ["apples", "applez"],
+        "banana": ["bananas"],
+        "pineapple": ["pineapples"]
+        }
+        """
+        result = {}
+        for category in master_list.values():
+            for word, extras in category.iteritems():
+                result[word] = extras["variations"]
+        return add_plurals(result)
+
     def _optin_flow(self, data):
         # a bit hacky but why not reuse
         status = wc_utils.check_for_flag_words(
             data["text"],
-            ["optin", "optout"]
+            {"optin":["opt-in"], "optout":["opt-out"]}
         )
         optin = status.get("optin")
         optout = status.get("optout")
@@ -88,7 +122,7 @@ class PluginWordRespond(Plugin):
             write_json({"opted_in": list(self.opted_in)}, OPT_IN_FILE)
             self.slack_client.api_call("chat.postMessage", **message)
 
-    def _build_slack_count_message(self, channel_id, count_dict, word_dict):
+    def _build_slack_count_message(self, channel_id, count_dict):
         result = {
             "channel": channel_id,
             "as_user": "true",
@@ -96,13 +130,12 @@ class PluginWordRespond(Plugin):
         }
 
         result["attachments"].append(self._build_slack_count_attachment(
-            count_dict,
-            word_dict
+            count_dict
         ))
 
         return result
 
-    def _build_slack_count_attachment(self, count_dict, word_dict):
+    def _build_slack_count_attachment(self, count_dict):
         attachment_template = {
             "fallback": "Breakdown of words used, and possible "
                         "alternatives",  # fallback text
@@ -114,11 +147,17 @@ class PluginWordRespond(Plugin):
         }
 
         for word, count in count_dict.iteritems():
+            alt = "No alternatives."
+            for category, base_word_dict in self.master_words.iteritems():
+                for base_word, extra_words in base_word_dict.iteritems():
+                    if word == base_word:
+                        if extra_words['alternatives']:
+                            alt = ', '.join(extra_words['alternatives'])
             attachment_template["fields"].append({
                 "title": word.capitalize(),
                 "value": "Count: {count}\nAlternative(s): {alt}".format(
                     count=count,
-                    alt=word_dict[word]
+                    alt=alt
                 ),
             })
 
@@ -141,8 +180,7 @@ class PluginWordRespond(Plugin):
         user_channel = self._get_user_dm_channel(data)
         mssg_kwargs = self._build_slack_count_message(
             user_channel,
-            word_counter,
-            self.words
+            word_counter
         )
         self.slack_client.api_call(
             "chat.postMessage", **mssg_kwargs

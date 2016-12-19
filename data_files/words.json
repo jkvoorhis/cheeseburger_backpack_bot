@@ -1,1 +1,26 @@
-{ "apple": "asparagus", "banana": "broccoli", "pineapple": "pea" }
+{
+  "fruit": {
+    "apple": {
+      "alternatives":["asparagus"],
+      "variations": ["applez"]
+    },
+    "banana": {
+      "alternatives":["broccoli"],
+      "variations": []
+    },
+    "pineapple": {
+      "alternatives":["pea"],
+      "variations": []
+    }
+  },
+  "meat":{
+    "chicken": {
+      "alternatives":["chickpea"],
+      "variations": []
+    },
+    "beef": {
+      "alternatives":["bean", "brussels sprout"],
+      "variations": []
+    }
+  }
+}
