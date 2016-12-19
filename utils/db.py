@@ -34,3 +34,10 @@ def update_user_counts(user, count_dict):
     write_json(all_users_counts, COUNTS_FILE)
 
     return all_users_counts[user]
+
+def get_user_counts():
+    all_users_counts = load_json(COUNTS_FILE)
+    if all_users_counts:
+        return all_users_counts
+    else:
+        return {}

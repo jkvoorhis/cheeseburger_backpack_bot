@@ -1,15 +1,17 @@
 from __future__ import unicode_literals
 from threading import Timer
 
+from datetime import datetime
 from rtmbot.core import Plugin
 
 from utils import word_checking as wc_utils
-from utils.db import update_user_counts
+from utils.db import update_user_counts, get_user_counts
 from utils.utils import load_json, write_json, add_plurals
+
+import threading
 
 OPT_IN_FILE = "data_files/opted_in.json"
 WORDS_FILE = "data_files/words.json"
-
 
 class PluginWordRespond(Plugin):
     def __init__(self, **kwargs):
@@ -18,8 +20,32 @@ class PluginWordRespond(Plugin):
         super(PluginWordRespond, self).__init__(**kwargs)
         self.words = add_plurals(load_json(WORDS_FILE))
         self.opted_in = set(self._load_opted_in(OPT_IN_FILE))
-        # TODO purely for testing/demo purposes, remove for prod
-        self.immediate = True
+        # timer to send private message each day at 5pm to opted in users
+        x=datetime.today()
+        y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
+        delta_t=y-x
+        secs=delta_t.seconds+1
+        t = Timer(secs, self.job)
+        t.start()
+
+    def job(self):
+        total_counts = get_user_counts()
+        for user in total_counts:
+            the_user = {}
+            the_user["user"] = user
+            user_count = total_counts.get(user)
+            if not user_count:
+                break;
+            else:
+                self._send_count_message(the_user, user_count)
+                # clear the count for the user after sending the end of day message of counts
+                update_user_counts(user, dict())
+        # timer to send private message each day at 5pm to opted in users
+        x=datetime.today()
+        y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
+        delta_t=y-x
+        secs=delta_t.seconds+1
+        threading.Timer(secs, self.job).start()
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
@@ -36,18 +62,6 @@ class PluginWordRespond(Plugin):
             if word_counter:
                 total_counts = update_user_counts(data["user"], word_counter)
                 print('total counts: {}'.format(total_counts))
-                # to repeat: this is purely for testing/demo purposes.
-                # in prod, all count messages will be sent at the end of the day
-                if self.immediate:
-                    self._send_count_message(data, total_counts)
-                else:
-                    delayed_message = Timer(
-                        10,
-                        self._send_count_message,
-                        args=[data, total_counts]
-                    )
-                    delayed_message.start()
-
 
     def _optin_flow(self, data):
         # a bit hacky but why not reuse
