@@ -40,3 +40,9 @@ def find_root_word(word, words_dict):
     for base_word, variations in words_dict.iteritems():
         if word == base_word or word in variations:
             return base_word
+
+
+def find_word_category(word, master_words_dict):
+    for category in master_words_dict.keys():
+        if word in master_words_dict[category].keys():
+            return category

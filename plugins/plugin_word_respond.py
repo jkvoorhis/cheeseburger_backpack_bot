@@ -21,29 +21,12 @@ class PluginWordRespond(Plugin):
         self.opted_in = self._load_opted_in(OPT_IN_FILE)
         # timer to send private message each day at 5pm to opted in users
         # t = Timer(secs_till_5(), self.job)
-        t = Timer(45, self.job)
-        t.daemon = True
-        t.start()
-
-    def job(self):
-        total_counts = get_user_counts()
-        for user in total_counts:
-            the_user = {}
-            the_user["user"] = user
-            user_count = total_counts.get(user)
-            if not user_count:
-                continue
-            else:
-                self._send_count_message(the_user, user_count)
-                # clear the count for the user after sending the end of day message of counts
-                update_user_counts(user, dict())
-        # timer to send private message each day at 5pm to opted in users
-        t = Timer(45, self.job)
+        t = Timer(45, self.send_at_5_job)
         t.daemon = True
         t.start()
 
     def process_message(self, data):
-        # TODO: for debugging only, remove for prod
+        # TODO: print for debugging only, remove for prod
         print(data)
         # trigger opt-in flow if talking directly to bot
         if data['text'].startswith("@cheeseburger_backpack"):
@@ -58,31 +41,48 @@ class PluginWordRespond(Plugin):
                 total_counts = update_user_counts(data["user"], word_counter)
                 print('total counts: {}'.format(total_counts))
 
+    def send_at_5_job(self):
+        total_counts = get_user_counts()
+        for user in total_counts:
+            the_user = {}
+            the_user["user"] = user
+            user_count = total_counts.get(user)
+            if not user_count:
+                continue
+            else:
+                self._send_count_message(the_user, user_count)
+                # clear the count for the user after sending the end of day message of counts
+                update_user_counts(user, dict())
+        # timer to send private message each day at 5pm to opted in users
+        t = Timer(45, self.send_at_5_job)
+        t.daemon = True
+        t.start()
+
     def _make_words_list(self, master_list):
         """
         receive:
         {
-          "fruit": {
-            "apple": {
-              "alternatives":["asparagus"],
-              "variations": ["applez"]
+            "fruit": {
+                "apple": {
+                    "alternatives":["asparagus"],
+                    "variations": ["applez"]
+                },
+                ...
             },
-            "banana": {
-              "alternatives":["broccoli"],
-              "variations": []
+            "candy": {
+                "twizzler": {
+                    "alternatives":["turnip"],
+                    "variations": []
+                }
             },
-            "pineapple": {
-              "alternatives":["pea"],
-              "variations": []
-            }
-          }
+            ...
         }
 
         return:
         {
         "apple": ["apples", "applez"],
-        "banana": ["bananas"],
-        "pineapple": ["pineapples"]
+        "twizzler":["twizzlers"],
+        ...
         }
         """
         result = {}
@@ -130,7 +130,7 @@ class PluginWordRespond(Plugin):
         write_json(self.opted_in, OPT_IN_FILE)
         self.slack_client.api_call("chat.postMessage", **message)
 
-    def _build_slack_count_message(self, channel_id, count_dict):
+    def _build_slack_count_message(self, user, channel_id, count_dict):
         result = {
             "channel": channel_id,
             "as_user": "true",
@@ -138,12 +138,13 @@ class PluginWordRespond(Plugin):
         }
 
         result["attachments"].append(self._build_slack_count_attachment(
+            user,
             count_dict
         ))
 
         return result
 
-    def _build_slack_count_attachment(self, count_dict):
+    def _build_slack_count_attachment(self, user, count_dict):
         attachment_template = {
             "fallback": "Breakdown of words used, and possible "
                         "alternatives",  # fallback text
@@ -155,6 +156,9 @@ class PluginWordRespond(Plugin):
         }
 
         for word, count in count_dict.iteritems():
+            cat = wc_utils.find_word_category(word, self.master_words)
+            if cat not in self.opted_in[user]:
+                continue
             alt = "No alternatives."
             for category, base_word_dict in self.master_words.iteritems():
                 for base_word, extra_words in base_word_dict.iteritems():
@@ -187,6 +191,7 @@ class PluginWordRespond(Plugin):
     def _send_count_message(self, data, word_counter):
         user_channel = self._get_user_dm_channel(data)
         mssg_kwargs = self._build_slack_count_message(
+            data['user'],
             user_channel,
             word_counter
         )
@@ -195,6 +200,7 @@ class PluginWordRespond(Plugin):
         )
 
     def _commands(self, data):
+        user = data["user"]
         user_channel = self._get_user_dm_channel(data)
         opt_in_opts = ["optin", "optout"]
         user_command = data["text"]
@@ -219,13 +225,17 @@ class PluginWordRespond(Plugin):
             }
             self.slack_client.api_call("chat.postMessage", **message)
         elif 'status' in user_command:
-            user_status = data["user"] in self.opted_in
+            user_status = user in self.opted_in.keys()
             message = {
                 "channel": user_channel,
                 "as_user": "true",
                 "mrkdwn": "true",
                 "text": "*Optin Status:* {}".format(user_status)
             }
+            if user_status:
+                message["text"] += "\n\tOpted in categories: {}".format(
+                    ', '.join(self.opted_in[user])
+                )
             self.slack_client.api_call("chat.postMessage", **message)
         # check if optin or optout is in command, but not both,
         # by comparing the two lists and returning shared values. There
