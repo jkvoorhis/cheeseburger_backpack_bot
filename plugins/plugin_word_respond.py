@@ -26,6 +26,7 @@ class PluginWordRespond(Plugin):
         delta_t=y-x
         secs=delta_t.seconds+1
         t = Timer(secs, self.job)
+        t.daemon = True
         t.start()
 
     def job(self):
@@ -45,7 +46,9 @@ class PluginWordRespond(Plugin):
         y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
         delta_t=y-x
         secs=delta_t.seconds+1
-        Timer(secs, self.job).start()
+        t = Timer(secs, self.job)
+        t.daemon = True
+        t.start()
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
