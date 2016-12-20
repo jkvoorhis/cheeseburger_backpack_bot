@@ -1,5 +1,7 @@
-import json
 import inflect
+import json
+
+from datetime import datetime
 
 def load_json(filepath):
     try:
@@ -39,3 +41,15 @@ def add_plurals(data):
     for singular, plural_array in data.iteritems():
         data[singular].append(p.plural(singular))
     return data
+
+def secs_till_5():
+    # return the number of seconds until the next 5pm local to where run
+    now = datetime.now()
+    if now.hour < 17:
+        next_5 = now.replace(hour=17, minute=0, second=0, microsecond=0)
+    else:
+        next_5 = now.replace(day=now.day + 1, hour=17, minute=0, second=0,
+                               microsecond=0)
+    delta_t = next_5 - now
+    return delta_t.seconds + 1
+

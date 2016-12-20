@@ -1,12 +1,11 @@
 from __future__ import unicode_literals
 from threading import Timer
 
-from datetime import datetime
 from rtmbot.core import Plugin
 
 from utils import word_checking as wc_utils
 from utils.db import update_user_counts, get_user_counts
-from utils.utils import load_json, write_json, add_plurals
+from utils.utils import load_json, write_json, add_plurals, secs_till_5
 
 OPT_IN_FILE = "data_files/opted_in.json"
 WORDS_FILE = "data_files/words.json"
@@ -21,11 +20,8 @@ class PluginWordRespond(Plugin):
         self.categories = self.master_words.keys()
         self.opted_in = self._load_opted_in(OPT_IN_FILE)
         # timer to send private message each day at 5pm to opted in users
-        x=datetime.today()
-        y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
-        delta_t=y-x
-        secs=delta_t.seconds+1
-        t = Timer(secs, self.job)
+        # t = Timer(secs_till_5(), self.job)
+        t = Timer(45, self.job)
         t.daemon = True
         t.start()
 
@@ -36,17 +32,13 @@ class PluginWordRespond(Plugin):
             the_user["user"] = user
             user_count = total_counts.get(user)
             if not user_count:
-                break;
+                continue
             else:
                 self._send_count_message(the_user, user_count)
                 # clear the count for the user after sending the end of day message of counts
                 update_user_counts(user, dict())
         # timer to send private message each day at 5pm to opted in users
-        x=datetime.today()
-        y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
-        delta_t=y-x
-        secs=delta_t.seconds+1
-        t = Timer(secs, self.job)
+        t = Timer(45, self.job)
         t.daemon = True
         t.start()
 
