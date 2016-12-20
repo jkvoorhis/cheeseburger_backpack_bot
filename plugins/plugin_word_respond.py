@@ -8,8 +8,6 @@ from utils import word_checking as wc_utils
 from utils.db import update_user_counts, get_user_counts
 from utils.utils import load_json, write_json, add_plurals
 
-import threading
-
 OPT_IN_FILE = "data_files/opted_in.json"
 WORDS_FILE = "data_files/words.json"
 
@@ -20,7 +18,8 @@ class PluginWordRespond(Plugin):
         super(PluginWordRespond, self).__init__(**kwargs)
         self.master_words = load_json(WORDS_FILE) #contains alternates
         self.words = self._make_words_list(self.master_words)
-        self.opted_in = set(self._load_opted_in(OPT_IN_FILE))
+        self.categories = self.master_words.keys()
+        self.opted_in = self._load_opted_in(OPT_IN_FILE)
         # timer to send private message each day at 5pm to opted in users
         x=datetime.today()
         y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
@@ -46,7 +45,7 @@ class PluginWordRespond(Plugin):
         y=x.replace(day=x.day+1, hour=17, minute=0, second=0, microsecond=0)
         delta_t=y-x
         secs=delta_t.seconds+1
-        threading.Timer(secs, self.job).start()
+        Timer(secs, self.job).start()
 
     def process_message(self, data):
         # TODO: for debugging only, remove for prod
@@ -99,13 +98,21 @@ class PluginWordRespond(Plugin):
 
     def _optin_flow(self, data):
         # a bit hacky but why not reuse
+        user = data['user']
+        command = data["text"]
+        to_check = {cat:[] for cat in self.categories}
+        to_check.update({"optin":[], "optout":[]})
         status = wc_utils.check_for_flag_words(
-            data["text"],
-            {"optin":["opt-in"], "optout":["opt-out"]}
+            command,
+            to_check
         )
         optin = status.get("optin")
         optout = status.get("optout")
 
+        categories = []
+        for cat in self.categories:
+            if status.get(cat):
+                categories.append(cat)
         message = {
             "channel": self._get_user_dm_channel(data),
             "as_user": "true",
@@ -113,14 +120,20 @@ class PluginWordRespond(Plugin):
         }
 
         if optin:
-            self.opted_in.add(data["user"])
-            write_json({"opted_in": list(self.opted_in)}, OPT_IN_FILE)
-            self.slack_client.api_call("chat.postMessage", **message)
+            set_opts = set(self.opted_in.get(user, []))
+            set_opts.update(categories)
+            self.opted_in[user] = list(set_opts)
+        elif optout and categories:
+            if self.opted_in.get(user):
+                set_opts = set(self.opted_in.get(user, []))
+                set_opts.difference_update(categories)
+                self.opted_in[user] = list(set_opts)
+        else:
+            if self.opted_in.get(user):
+                del self.opted_in[user]
 
-        elif optout:
-            self.opted_in.discard(data["user"])
-            write_json({"opted_in": list(self.opted_in)}, OPT_IN_FILE)
-            self.slack_client.api_call("chat.postMessage", **message)
+        write_json(self.opted_in, OPT_IN_FILE)
+        self.slack_client.api_call("chat.postMessage", **message)
 
     def _build_slack_count_message(self, channel_id, count_dict):
         result = {
@@ -167,9 +180,9 @@ class PluginWordRespond(Plugin):
         # TODO this will become more complicated when we use a db
         users = load_json(filepath)
         if users:
-            return users["opted_in"]
+            return users
         else:
-            return []
+            return {}
 
     def _get_user_dm_channel(self, data):
         resp = self.slack_client.api_call('im.open', user=data['user'])
