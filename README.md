@@ -2,7 +2,7 @@
 
 ## About the Bot
 This bot helps people become aware of oppressive/appropriative 
-language they use in their day to day conversations, and ofers 
+language they use in their day to day conversations, and offers 
 alternative words folks can use instead. It is intended to be an 
 educational tool with the goal of assisting people who are open
 and interested in changing the language they use to be kinder,
