@@ -40,8 +40,7 @@ original post), but the sentiments apply for all identities referenced by the
 words in the list.
 
 This list is open for expansion and revision. Please submit a PR with additional
-words for which you would like to see usage numbers in your Slack organization. 
-Alternatively you can compose your own word set to use with this script and 
-provide it as an argument on the command line.
+words/changes. Alternatively you can compose your own word set to use with this bot
+and use that instead.
 
 [ableism-language-post]: http://www.autistichoya.com/p/ableist-words-and-terms-to-avoid.html
