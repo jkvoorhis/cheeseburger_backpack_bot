@@ -4,6 +4,8 @@ The file `default_words.txt` contains slurs and linguistic microagressions
 re: 
 
 * ableism
+* gender
+* sex
 * (more to come).
 
 The two are not separated in this file as they are listed alphabetically.
